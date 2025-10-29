@@ -1,0 +1,10 @@
+services:
+api:
+build: .
+container_name: fastapi-service
+env_file: .env
+ports:
+  - "8000:8000"
+volumes:
+  - ./src:/app/src:rw
+command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --app-dir src

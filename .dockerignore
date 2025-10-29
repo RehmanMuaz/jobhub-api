@@ -1,0 +1,12 @@
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.venv
+venv
+.git
+.gitignore
+pytest.ini
+mypy.ini
+ruff.toml
+.pre-commit-config.yaml
