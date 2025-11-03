@@ -1,29 +1,275 @@
-# JobHub-API
+<a id="readme-top"></a>
 
-Minimal FastAPI microservice scaffold.
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![License][license-shield]][license-url]
+[![LinkedIn][linkedin-shield]][linkedin-url]
 
-## Quickstart
+<br />
+<div align="center">
+  <a href="https://github.com/RehmanMuaz/JobHub-API">
+    <img src="docs/logo-bg.png" alt="Roadmap" width="20%">
+  </a>
 
-```bash
-# Python 3.12+ recommended
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+  <h3 align="center">JobHub-API</h3>
 
-pip install --upgrade pip
-pip install -e .
-pip install -e .[dev]
+  <p align="center">
+    Backend API for JobHub — a platform to help users track and manage job applications efficiently.
+    <br />
+    <a href="https://github.com/RehmanMuaz/JobHub-API"><strong>Explore the docs »</strong></a>
+    <br /><br />
+    <a href="https://github.com/RehmanMuaz/JobHub-API/issues">Report Bug</a> ·
+    <a href="https://github.com/RehmanMuaz/JobHub-API/issues">Request Feature</a>
+  </p>
+</div>
 
-make dev  # or: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --app-dir src
+---
+
+## Table of Contents
+
+- [Table of Contents](#table-of-contents)
+- [About the Project](#about-the-project)
+  - [Built With](#built-with)
+- [System Architecture](#system-architecture)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [Usage](#usage)
+- [Roadmap](#roadmap)
+- [Related Projects](#related-projects)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
+- [Acknowledgments](#acknowledgments)
+
+---
+
+## About the Project
+
+**JobHub-API** is the backend service powering the **JobHub platform**, which allows users to:
+
+- Collect, store, and manage job postings from different sources.
+- Track their application progress.
+- Analyze job description text for skill insights using LLM-based processing (future phase).
+
+The API is built using **FastAPI**, following clean architecture principles with Pydantic schemas, dependency injection, and modular service design.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+### Built With
+
+- [![Python][Python-shield]][Python-url]
+- [![FastAPI][FastAPI-shield]][FastAPI-url]
+- [![PostgreSQL][Postgres-shield]][Postgres-url]
+- [![Docker][Docker-shield]][Docker-url]
+- [![Pydantic][Pydantic-shield]][Pydantic-url]
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+## System Architecture
+
+```mermaid
+flowchart TD
+    A[Frontend - React] -->|REST / GraphQL| B[JobHub-API]
+    B --> C[(PostgreSQL Database)]
+    B --> D[SentinelAuth Microservice]
+    D --> E[(Auth Database)]
+    B --> F[Scraper Service]
+
+        subgraph Core Services
+        B
+        D
+        end
 ```
 
-## Run tests
+<p align="center">
+  <em>Microservice-oriented architecture enabling modular scaling and independent deployments.</em>
+</p>
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+## Getting Started
+
+Follow these steps to run the API locally.
+
+### Prerequisites
+
+- Python 3.11+
+- Git
+- Docker (optional, for containerized setup)
+
+Install Python packages:
 
 ```bash
-make test
+pip install -r requirements.txt
 ```
 
-## Lint/format/type-check
+### Installation
+
+1. **Clone the repo**
+
+   ```bash
+   git clone https://github.com/RehmanMuaz/JobHub-API.git
+   cd JobHub-API
+   ```
+
+2. **Set up a virtual environment**
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate   # (macOS/Linux)
+   .venv\Scripts\activate    # (Windows)
+   ```
+
+3. **Install dependencies**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Set up environment variables**
+   Create a `.env` file in the root directory:
+
+   ```
+   DATABASE_URL=postgresql://user:password@localhost:5432/jobhub
+   JWT_SECRET=your_jwt_secret
+   ```
+
+5. **Run the FastAPI server**
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+Your API will be running at **http://localhost:8000**
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+## Usage
+
+Visit auto-generated docs:
+
+- Swagger UI → `http://localhost:8000/docs`
+- ReDoc → `http://localhost:8000/redoc`
+
+Example API flow:
 
 ```bash
-make fmt && make lint && make type
+POST /jobs/create
+GET  /jobs/{id}
+GET  /applications
 ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+## Roadmap
+
+![Roadmap](docs/roadmap.png)
+
+- [x] Initial FastAPI project setup
+- [x] Database + Dependency Injection
+- [ ] Authentication microservice integration
+- [ ] LinkedIn/Indeed scraper microservice
+- [ ] Frontend dashboard (Next.js)
+- [ ] AI-based job description analysis
+
+See [open issues](https://github.com/RehmanMuaz/JobHub-API/issues) for all features & bugs.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+## Related Projects
+
+- [SentinelAuth](https://github.com/RehmanMuaz/SentinelAuth) — Authentication microservice for JobHub.
+- **JobHub-Frontend** _(Coming Soon)_ — Next.js web app for analytics & tracking.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+## Contributing
+
+Contributions make the open-source community great!  
+If you have suggestions or improvements:
+
+1. Fork the repo
+2. Create your branch (`git checkout -b feature/AmazingFeature`)
+3. Commit (`git commit -m 'Add some AmazingFeature'`)
+4. Push (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+<a href="https://github.com/RehmanMuaz/JobHub-API/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=RehmanMuaz/JobHub-API" alt="Contributors" />
+</a>
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+## License
+
+Distributed under the **MIT License**. See `LICENSE.txt` for details.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+## Contact
+
+**Muaz Rehman**  
+[LinkedIn](https://linkedin.com/in/muaz-rehman)  
+[GitHub](https://github.com/RehmanMuaz)
+
+Project Link: [https://github.com/RehmanMuaz/JobHub-API](https://github.com/RehmanMuaz/JobHub-API)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+## Acknowledgments
+
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Pydantic Models](https://docs.pydantic.dev/)
+- [Docker](https://www.docker.com/)
+- [PostgreSQL](https://www.postgresql.org/)
+- [Shields.io](https://shields.io/)
+- [Contrib.rocks](https://contrib.rocks)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+[contributors-shield]: https://img.shields.io/github/contributors/RehmanMuaz/JobHub-API.svg?style=for-the-badge
+[contributors-url]: https://github.com/RehmanMuaz/JobHub-API/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/RehmanMuaz/JobHub-API.svg?style=for-the-badge
+[forks-url]: https://github.com/RehmanMuaz/JobHub-API/network/members
+[stars-shield]: https://img.shields.io/github/stars/RehmanMuaz/JobHub-API.svg?style=for-the-badge
+[stars-url]: https://github.com/RehmanMuaz/JobHub-API/stargazers
+[issues-shield]: https://img.shields.io/github/issues/RehmanMuaz/JobHub-API.svg?style=for-the-badge
+[issues-url]: https://github.com/RehmanMuaz/JobHub-API/issues
+[license-shield]: https://img.shields.io/github/license/RehmanMuaz/JobHub-API.svg?style=for-the-badge
+[license-url]: https://github.com/RehmanMuaz/JobHub-API/blob/main/LICENSE.txt
+[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
+[linkedin-url]: https://linkedin.com/in/muaz-rehman
+[Python-shield]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
+[Python-url]: https://www.python.org/
+[FastAPI-shield]: https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white
+[FastAPI-url]: https://fastapi.tiangolo.com/
+[Postgres-shield]: https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white
+[Postgres-url]: https://www.postgresql.org/
+[Docker-shield]: https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white
+[Docker-url]: https://www.docker.com/
+[Pydantic-shield]: https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white
+[Pydantic-url]: https://docs.pydantic.dev/
