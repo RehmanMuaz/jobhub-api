@@ -1,25 +1,50 @@
 from __future__ import annotations
-from pydantic import BaseModel, HttpUrl, Field
-from typing import Optional
-from uuid import uuid4
-from .common import ID, Source, TimestampedModel
 
-class ScrapeRequest(BaseModel):
-    url: HttpUrl
-    source: Optional[Source] = None
-    priority: int = 0
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
-class ScrapeJobStatus:
-    QUEUED = "queued"
-    RUNNING = "running"
-    DONE = "done"
-    ERROR = "error"
+from pydantic import BaseModel, Field, HttpUrl
 
-class ScrapeJob(TimestampedModel):
-    id: ID = Field(default_factory=uuid4)
+from app.schemas.common import Source
+from app.schemas.job_posting import JobPosting, RawSnapshot
+
+
+class ScrapeJobStatus(str, Enum):
+    queued = "queued"
+    in_progress = "in_progress"
+    completed = "completed"
+    failed = "failed"
+    deferred = "deferred"
+    canceled = "canceled"
+    unknown = "unknown"
+
+
+class ScrapeJobCreate(BaseModel):
     url: HttpUrl
     source: Source = "other"
-    status: str = ScrapeJobStatus.QUEUED
+    callback_url: HttpUrl | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class ScrapeJobResponse(BaseModel):
+    job_id: str
+    status: ScrapeJobStatus
+
+
+class ScrapeJobResult(BaseModel):
+    job_posting: JobPosting | None = None
+    snapshot: RawSnapshot | None = None
+    raw_html_preview: str | None = None
+    warnings: list[str] = Field(default_factory=list)
     error: str | None = None
-    # link to normalized posting if parsed successfully
-    posting_id: ID | None = None
+
+
+class ScrapeJobDetail(BaseModel):
+    job_id: str
+    status: ScrapeJobStatus
+    enqueued_at: datetime | None = None
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    result: ScrapeJobResult | None = None
+    error: str | None = None

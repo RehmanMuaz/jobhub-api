@@ -1,3 +1,27 @@
+Metadata-Version: 2.1
+Name: jobhub-api
+Version: 0.1.0
+Summary: Job Hub API – backend for scrape requests, job postings, applications
+Requires-Python: >=3.8.5
+Description-Content-Type: text/markdown
+Requires-Dist: beautifulsoup4>=4.12.0
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: loguru>=0.7.0
+Requires-Dist: pydantic>=2.7
+Requires-Dist: pydantic-settings>=2.2
+Requires-Dist: redis>=5.0.0
+Requires-Dist: rq>=1.15.0
+Requires-Dist: uvicorn[standard]>=0.30.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.2; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23; extra == "dev"
+Requires-Dist: anyio>=4.4; extra == "dev"
+Requires-Dist: ruff>=0.6.0; extra == "dev"
+Requires-Dist: mypy>=1.10; extra == "dev"
+Requires-Dist: pre-commit>=3.7; extra == "dev"
+Requires-Dist: types-requests; extra == "dev"
+
 <a id="readme-top"></a>
 
 [![Contributors][contributors-shield]][contributors-url]
@@ -174,15 +198,6 @@ If you prefer running services manually, start Redis and then launch a worker:
 
 ```bash
 redis-server --port 6379
-export PYTHONPATH=src  # macOS/Linux
-python -m app.worker.runner
-```
-
-On Windows PowerShell use:
-
-```powershell
-redis-server --port 6379
-$env:PYTHONPATH="src"
 python -m app.worker.runner
 ```
 

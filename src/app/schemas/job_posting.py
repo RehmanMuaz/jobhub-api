@@ -21,7 +21,7 @@ class JobPosting(TimestampedModel):
     company: str
     location: str | None = None
     description_md: str
-    requirements: List[str] = []
+    requirements: List[str] = Field(default_factory=list)
     posted_at: datetime | None = None
     url: HttpUrl
     source: Source

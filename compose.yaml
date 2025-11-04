@@ -1,10 +1,30 @@
 services:
-api:
-build: .
-container_name: fastapi-service
-env_file: .env
-ports:
-  - "8000:8000"
-volumes:
-  - ./src:/app/src:rw
-command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --app-dir src
+  api:
+    build: .
+    container_name: fastapi-service
+    env_file: .env
+    environment:
+      PYTHONPATH: /app/src
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src:rw
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --app-dir src
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    container_name: scrape-worker
+    env_file: .env
+    environment:
+      PYTHONPATH: /app/src
+    command: python -m app.worker.runner
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: jobhub-redis
+    ports:
+      - "6379:6379"
