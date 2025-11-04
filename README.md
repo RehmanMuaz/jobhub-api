@@ -36,6 +36,8 @@
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
+  - [Run with Docker Compose](#run-with-docker-compose)
+  - [Scraper Worker (manual run)](#scraper-worker-manual-run)
 - [Usage](#usage)
 - [Roadmap](#roadmap)
 - [Related Projects](#related-projects)
@@ -148,7 +150,7 @@ pip install -r requirements.txt
 5. **Run the FastAPI server**
    ```bash
     uvicorn app.main:app --reload
-    ```
+   ```
 
 Your API will be running at **http://localhost:8000**
 
@@ -213,7 +215,7 @@ GET  /api/v1/scrape/jobs/{job_id}/result
 
 ## Roadmap
 
-![Roadmap](docs/roadmap.png)
+![Roadmap](docs/roadmap.jpg)
 
 - [x] Initial FastAPI project setup
 - [x] Database + Dependency Injection
