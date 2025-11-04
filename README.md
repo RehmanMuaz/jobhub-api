@@ -166,6 +166,7 @@ This will start:
 
 - `fastapi-service`: the REST API exposed on http://localhost:8000
 - `jobhub-redis`: Redis instance used as the scraper job queue
+- `jobhub-postgres`: PostgreSQL database for storing job postings and snapshots
 - `scrape-worker`: background worker that processes queued scrape jobs
 
 Hit <kbd>Ctrl+C</kbd> to stop all services.
@@ -188,7 +189,19 @@ $env:PYTHONPATH="src"
 python -m app.worker.runner
 ```
 
+Ensure a PostgreSQL instance is running and reachable via `DATABASE_URL` before launching the worker.
+
 Submit scrape jobs via the API once the worker is active.
+
+### Apply Database Migrations
+
+Run Alembic migrations before starting the app (or whenever the schema changes):
+
+```bash
+docker compose run --rm api alembic upgrade head
+```
+
+If you're running locally without Docker, set `DATABASE_URL` and use the same command from your virtualenv.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -207,6 +220,7 @@ Example API flow:
 POST /api/v1/scrape/jobs
 GET  /api/v1/scrape/jobs/{job_id}
 GET  /api/v1/scrape/jobs/{job_id}/result
+GET  /api/v1/job-postings
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "fastapi-service"
@@ -18,10 +18,17 @@ class Settings(BaseSettings):
     scraper_result_ttl_seconds: int = 3600
     scraper_failure_ttl_seconds: int = 3600
     scraper_raw_html_preview_limit: int = 4000
+    database_url: str = "postgresql+psycopg://jobhub:jobhub@localhost:5432/jobhub"
+    database_echo: bool = False
+    database_pool_size: int = 5
+    database_max_overflow: int = 10
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    # Pydantic v2 settings configuration. Ignore extra env keys like POSTGRES_*.
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 settings = Settings()

@@ -7,8 +7,12 @@ import httpx
 from loguru import logger
 from rq import get_current_job
 from rq.job import Job
+from sqlalchemy import select
 
 from app.core.config import settings
+from app.db.session import SessionLocal
+from app.models.job_posting import JobPosting as JobPostingModel
+from app.models.job_posting import RawSnapshot as RawSnapshotModel
 from app.schemas.job_posting import RawSnapshot
 from app.schemas.scrape import ScrapeJobCreate, ScrapeJobResult
 from app.utils.scrape_parsers import extract_job_posting
@@ -48,6 +52,7 @@ def run_scrape_job(payload: dict[str, Any]) -> dict[str, Any]:
     raw_html = response.text
     job_posting, warnings = extract_job_posting(raw_html, str(request.url), request.source)
 
+    preview = _truncate_html(raw_html)
     snapshot = RawSnapshot(
         posting_id=job_posting.id,
         fetched_at=datetime.now(timezone.utc),
@@ -55,14 +60,17 @@ def run_scrape_job(payload: dict[str, Any]) -> dict[str, Any]:
         bytes_location=None,
         status_code=response.status_code,
         headers={k: v for k, v in response.headers.items()},
+        raw_html_preview=preview,
     )
 
     result = ScrapeJobResult(
         job_posting=job_posting,
         snapshot=snapshot,
-        raw_html_preview=_truncate_html(raw_html),
+        raw_html_preview=preview,
         warnings=warnings,
     )
+
+    _persist_result(result)
 
     logger.info(
         "Scrape completed url=%s status=%s warnings=%d",
@@ -133,3 +141,59 @@ def _build_error_result(
         warnings=warnings,
         error=f"{message} (url={url})",
     )
+
+
+def _persist_result(result: ScrapeJobResult) -> None:
+    job_posting_schema = result.job_posting
+    if job_posting_schema is None:
+        return
+
+    session = SessionLocal()
+    try:
+        stmt = select(JobPostingModel).where(JobPostingModel.url == str(job_posting_schema.url))
+        job_posting = session.scalar(stmt)
+
+        if job_posting is None:
+            job_posting = JobPostingModel(
+                id=job_posting_schema.id,
+                external_id=job_posting_schema.external_id,
+                title=job_posting_schema.title,
+                company=job_posting_schema.company,
+                location=job_posting_schema.location,
+                description_md=job_posting_schema.description_md,
+                requirements=job_posting_schema.requirements,
+                posted_at=job_posting_schema.posted_at,
+                url=str(job_posting_schema.url),
+                source=job_posting_schema.source,
+            )
+            session.add(job_posting)
+        else:
+            job_posting.external_id = job_posting_schema.external_id
+            job_posting.title = job_posting_schema.title
+            job_posting.company = job_posting_schema.company
+            job_posting.location = job_posting_schema.location
+            job_posting.description_md = job_posting_schema.description_md
+            job_posting.requirements = job_posting_schema.requirements
+            job_posting.posted_at = job_posting_schema.posted_at
+            job_posting.source = job_posting_schema.source
+
+        if result.snapshot:
+            snapshot_schema = result.snapshot
+            snapshot = RawSnapshotModel(
+                id=snapshot_schema.id,
+                job_posting=job_posting,
+                fetched_at=snapshot_schema.fetched_at,
+                mime_type=snapshot_schema.mime_type,
+                bytes_location=snapshot_schema.bytes_location,
+                status_code=snapshot_schema.status_code,
+                headers=snapshot_schema.headers,
+                raw_html_preview=snapshot_schema.raw_html_preview or result.raw_html_preview,
+            )
+            session.add(snapshot)
+
+        session.commit()
+    except Exception:
+        session.rollback()
+        logger.exception("Failed to persist scrape result for url=%s", job_posting_schema.url)
+    finally:
+        session.close()

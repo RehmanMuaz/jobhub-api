@@ -13,6 +13,7 @@ class RawSnapshot(TimestampedModel):
     bytes_location: str | None = None  # e.g., s3://bucket/key or file path
     status_code: int | None = None
     headers: dict[str, str] | None = None
+    raw_html_preview: str | None = None
 
 class JobPosting(TimestampedModel):
     id: ID = Field(default_factory=uuid4)
@@ -25,3 +26,7 @@ class JobPosting(TimestampedModel):
     posted_at: datetime | None = None
     url: HttpUrl
     source: Source
+
+
+class StoredJobPosting(JobPosting):
+    latest_snapshot: RawSnapshot | None = None

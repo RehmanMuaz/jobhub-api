@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.api.v1.endpoints.health import router as health_router
+from app.api.v1.endpoints.job_postings import router as job_postings_router
 from app.api.v1.endpoints.scrape import router as scrape_router
 
 
@@ -10,6 +11,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name)
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(scrape_router, prefix="/api/v1")
+    app.include_router(job_postings_router, prefix="/api/v1")
     return app
 
 

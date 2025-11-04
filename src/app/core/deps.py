@@ -4,31 +4,26 @@ from typing import Generator
 from loguru import logger
 from redis import Redis
 from rq import Queue
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.services.scrape_service import ScrapeService
+from app.db.session import get_db_session
 
-# Settings Provider (Singleton)
+
 @lru_cache
 def get_settings():
     return settings
 
 
-# Logger Provider (simple, shared)
 def get_logger():
     return logger
 
-# Database Session Provider - PLACEHOLDER
-def get_db() -> Generator[None, None, None]:
-    # Example for future:
-    # db = SessionLocal()
-    # try:
-    #     yield db
-    # finally:
-    #     db.close()
-    yield None
 
-# Service Factories
+def get_db() -> Generator[Session, None, None]:
+    yield from get_db_session()
+
+
 @lru_cache
 def get_redis_connection() -> Redis:
     return Redis.from_url(settings.redis_url)

@@ -12,6 +12,8 @@ services:
     command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --app-dir src
     depends_on:
       - redis
+      - postgres
+    platform: linux/amd64
 
   worker:
     build: .
@@ -22,9 +24,30 @@ services:
     command: python -m app.worker.runner
     depends_on:
       - redis
+      - postgres
+    platform: linux/amd64
 
   redis:
     image: redis:7.2-alpine
     container_name: jobhub-redis
     ports:
       - "6379:6379"
+    platform: linux/amd64
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: jobhub-postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    platform: linux/amd64
+
+volumes:
+  postgres_data:
