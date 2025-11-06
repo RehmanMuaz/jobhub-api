@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 class Settings(BaseSettings):
     app_name: str = "fastapi-service"
@@ -22,6 +23,16 @@ class Settings(BaseSettings):
     database_echo: bool = False
     database_pool_size: int = 5
     database_max_overflow: int = 10
+    # CORS
+    cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ]
+    )
+    cors_allow_credentials: bool = False
+    cors_allow_methods: list[str] = Field(default_factory=lambda: ["*"])
+    cors_allow_headers: list[str] = Field(default_factory=lambda: ["*"])
 
     # Pydantic v2 settings configuration. Ignore extra env keys like POSTGRES_*.
     model_config = SettingsConfigDict(

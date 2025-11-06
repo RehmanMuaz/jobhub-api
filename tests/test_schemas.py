@@ -1,9 +1,8 @@
-from app.schemas import ScrapeRequest, JobPosting
-from pydantic import HttpUrl
+from app.schemas import ScrapeJobCreate, JobPosting
 
 
-def test_scrape_request_model():
-    sr = ScrapeRequest(url="https://example.com/jobs/123", source="other", priority=1)
+def test_scrape_job_create_model():
+    sr = ScrapeJobCreate(url="https://example.com/jobs/123", source="other")
     assert str(sr.url).startswith("https://")
 
 
