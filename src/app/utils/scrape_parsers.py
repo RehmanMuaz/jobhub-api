@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
+import re
 from datetime import datetime
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, Any
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
@@ -19,30 +21,33 @@ def extract_job_posting(html: str, url: str, source: Source) -> Tuple[JobPosting
     soup = BeautifulSoup(html, "html.parser")
     warnings: list[str] = []
 
-    title = _resolve_title(soup)
+    # Prefer structured data (JSON-LD) when available
+    jsonld = _resolve_from_json_ld(soup)
+
+    title = jsonld.get("title") or _resolve_title(soup)
     if not title:
         title = _fallback_title(url)
         warnings.append("title_inferred_from_url")
 
-    company = _resolve_company(soup)
+    company = jsonld.get("company") or _resolve_company(soup)
     if not company:
         company = _fallback_company(url)
         warnings.append("company_inferred_from_domain")
 
-    location = _resolve_location(soup)
+    location = jsonld.get("location") or _resolve_location(soup)
     if not location:
         warnings.append("location_missing")
 
-    description = _resolve_description(soup)
+    description = jsonld.get("description") or _resolve_description(soup)
     if not description:
         description = "No description detected."
         warnings.append("description_missing")
 
-    requirements = _resolve_requirements(soup)
+    requirements = jsonld.get("requirements") or _resolve_requirements(soup)
     if not requirements:
         warnings.append("requirements_missing")
 
-    posted_at = _resolve_posted_at(soup)
+    posted_at = jsonld.get("posted_at") or _resolve_posted_at(soup)
 
     job_posting = JobPosting(
         title=title.strip(),
@@ -83,6 +88,175 @@ def _resolve_title(soup: BeautifulSoup) -> str | None:
     return None
 
 
+def _resolve_from_json_ld(soup: BeautifulSoup) -> dict[str, Any]:
+    """Parse schema.org JSON-LD JobPosting if present.
+
+    Returns a dict with any of: title, company, location, description, requirements, posted_at.
+    """
+    result: dict[str, Any] = {}
+
+    def _nodes_from(data: Any) -> list[dict[str, Any]]:
+        nodes: list[dict[str, Any]] = []
+        if isinstance(data, dict):
+            if "@graph" in data and isinstance(data["@graph"], list):
+                nodes.extend([n for n in data["@graph"] if isinstance(n, dict)])
+            else:
+                nodes.append(data)
+        elif isinstance(data, list):
+            nodes.extend([n for n in data if isinstance(n, dict)])
+        return nodes
+
+    def _first_jobposting(nodes: list[dict[str, Any]]) -> dict[str, Any] | None:
+        for n in nodes:
+            t = n.get("@type")
+            if isinstance(t, list):
+                if any(str(x).lower() == "jobposting" for x in t):
+                    return n
+            elif isinstance(t, str) and t.lower() == "jobposting":
+                return n
+        return None
+
+    def _text_from_html(value: str) -> str:
+        # Strip HTML to plain text while keeping line breaks for <li>/<p>
+        frag = BeautifulSoup(value, "html.parser")
+        for br in frag.find_all(["br", "p"]):
+            br.append("\n")
+        text = frag.get_text(" ", strip=True)
+        # Normalize multiple spaces and line breaks
+        text = re.sub(r"\s*\n\s*", "\n", text)
+        text = re.sub(r"[ \t]+", " ", text)
+        return text.strip()
+
+    def _requirements_from(node: dict[str, Any]) -> list[str]:
+        req_fields = []
+        for key in ("qualifications", "skills", "educationRequirements", "experienceRequirements", "responsibilities"):
+            val = node.get(key)
+            if not val:
+                continue
+            if isinstance(val, list):
+                req_fields.extend([str(x) for x in val])
+            elif isinstance(val, str):
+                # If HTML list, extract <li> items; else split by bullets/newlines
+                items: list[str] = []
+                frag = BeautifulSoup(val, "html.parser")
+                lis = frag.find_all("li")
+                if lis:
+                    items.extend(li.get_text(" ", strip=True) for li in lis)
+                else:
+                    text = _text_from_html(val)
+                    for part in re.split(r"\n|•|-\s+", text):
+                        s = part.strip(" \t-•·")
+                        if len(s) > 5:
+                            items.append(s)
+                req_fields.extend(items)
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        out: list[str] = []
+        for it in req_fields:
+            if it and it not in seen:
+                seen.add(it)
+                out.append(it)
+        return out
+
+    scripts = soup.find_all("script", attrs={"type": "application/ld+json"})
+    for script in scripts:
+        raw = script.string or script.get_text() or ""
+        if not raw.strip():
+            continue
+        try:
+            data = json.loads(raw)
+        except Exception:
+            # Some sites wrap multiple JSON-LD objects; try to extract the first object
+            try:
+                start = raw.find("{")
+                end = raw.rfind("}")
+                if start != -1 and end != -1 and end > start:
+                    data = json.loads(raw[start : end + 1])
+                else:
+                    continue
+            except Exception:
+                continue
+
+        nodes = _nodes_from(data)
+        job = _first_jobposting(nodes)
+        if not job:
+            # Some pages embed as part of a list
+            for n in nodes:
+                if isinstance(n, dict):
+                    nested = _first_jobposting(_nodes_from(n))
+                    if nested:
+                        job = nested
+                        break
+        if not job:
+            continue
+
+        # Title/Name
+        title = job.get("title") or job.get("name")
+        if isinstance(title, str) and title.strip():
+            result.setdefault("title", title.strip())
+
+        # Company/Hiring organization
+        org = job.get("hiringOrganization")
+        company = None
+        if isinstance(org, dict):
+            company = org.get("name") or org.get("legalName")
+        elif isinstance(org, str):
+            company = org
+        if isinstance(company, str) and company.strip():
+            result.setdefault("company", company.strip())
+
+        # Location
+        loc = job.get("jobLocation")
+        loc_text: str | None = None
+        def _addr_to_text(addr: dict[str, Any]) -> str:
+            parts = [
+                addr.get("addressLocality"),
+                addr.get("addressRegion"),
+                addr.get("addressCountry"),
+            ]
+            return ", ".join([str(p) for p in parts if p])
+        if isinstance(loc, dict):
+            if "address" in loc and isinstance(loc["address"], dict):
+                loc_text = _addr_to_text(loc["address"]) or loc.get("name")
+        elif isinstance(loc, list) and loc:
+            for entry in loc:
+                if isinstance(entry, dict):
+                    if "address" in entry and isinstance(entry["address"], dict):
+                        loc_text = _addr_to_text(entry["address"]) or entry.get("name")
+                        if loc_text:
+                            break
+        if not loc_text and isinstance(job.get("jobLocationType"), str):
+            if "telecommute" in job["jobLocationType"].lower():
+                loc_text = "Remote"
+        if loc_text:
+            result.setdefault("location", loc_text)
+
+        # Description
+        desc = job.get("description")
+        if isinstance(desc, str) and desc.strip():
+            text = _text_from_html(desc)
+            if len(text) >= _DESCRIPTION_MIN_LENGTH:
+                result.setdefault("description", text)
+
+        # Posted at
+        date_posted = job.get("datePosted") or job.get("datePublished")
+        if isinstance(date_posted, str):
+            parsed = _parse_datetime(date_posted)
+            if parsed:
+                result.setdefault("posted_at", parsed)
+
+        # Requirements
+        reqs = _requirements_from(job)
+        if reqs:
+            result.setdefault("requirements", reqs)
+
+        # We only need first valid JobPosting
+        if result:
+            break
+
+    return result
+
+
 def _resolve_company(soup: BeautifulSoup) -> str | None:
     meta_keys = [
         ("name", "company"),
@@ -106,12 +280,19 @@ def _resolve_location(soup: BeautifulSoup) -> str | None:
     meta_keys = [
         ("name", "job:location"),
         ("property", "job:location"),
-        ("name", "twitter:label1"),
         ("itemprop", "jobLocation"),
     ]
     for attr, value in meta_keys:
         if content := _meta_content(soup, attr, value):
             return content
+
+    # Handle twitter label/data pairs e.g. label1=Location, data1=City
+    for i in range(1, 5):
+        label = _meta_content(soup, "name", f"twitter:label{i}")
+        if label and "location" in label.lower():
+            data = _meta_content(soup, "name", f"twitter:data{i}")
+            if data:
+                return data
 
     for selector in (
         "[data-test*=location]",
@@ -140,6 +321,9 @@ def _resolve_description(soup: BeautifulSoup) -> str | None:
         node = soup.select_one(selector)
         if not node:
             continue
+        # Replace <br> with line breaks for better readability
+        for br in node.find_all("br"):
+            br.replace_with("\n")
         text = node.get_text("\n", strip=True)
         if len(text) >= _DESCRIPTION_MIN_LENGTH:
             return text
@@ -151,20 +335,37 @@ def _resolve_description(soup: BeautifulSoup) -> str | None:
 
 
 def _resolve_requirements(soup: BeautifulSoup) -> list[str]:
-    containers = soup.select(
-        "ul[class*=requirement], ul[id*=requirement], ul[class*=responsibil], ul[id*=responsibil]"
-    )
-    if not containers:
-        containers = soup.select("ul, ol")
+    # Prefer lists within the detected description container to avoid nav/breadcrumbs
+    desc_container = None
+    for selector in (
+        "[data-test*=description]",
+        "[data-testid*=description]",
+        "[id*=description]",
+        "[class*=description]",
+        "[class*=job-description]",
+        "[itemprop=description]",
+    ):
+        desc_container = soup.select_one(selector)
+        if desc_container:
+            break
+
+    def _collect_from(root: BeautifulSoup) -> list[str]:
+        texts: list[str] = []
+        for container in root.select("ul, ol"):
+            joined_class = " ".join(container.get("class", [])).lower()
+            if any(k in joined_class for k in ("breadcrumb", "nav", "menu", "pagination")):
+                continue
+            for li in container.find_all("li"):
+                t = li.get_text(" ", strip=True)
+                if t and len(t) > 5:
+                    texts.append(t)
+        return texts
 
     items: list[str] = []
-    for container in containers:
-        for li in container.find_all("li"):
-            text = li.get_text(" ", strip=True)
-            if text and len(text) > 5:
-                items.append(text)
-        if items:
-            break
+    if desc_container:
+        items = _collect_from(desc_container)
+    if not items:
+        items = _collect_from(soup)
 
     # Deduplicate while preserving order
     seen: set[str] = set()
