@@ -1,5 +1,5 @@
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from app.main import create_app
 
@@ -28,7 +28,8 @@ async def test_list_job_postings_empty(monkeypatch):
 
     app.dependency_overrides[deps_module.get_db] = _get_fake_db
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/api/v1/job-postings")
         assert resp.status_code == 200
         assert resp.json() == []

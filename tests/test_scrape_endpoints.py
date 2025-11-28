@@ -1,5 +1,5 @@
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from app.main import create_app
 from app.core.services.scrape_service import ScrapeService
@@ -34,7 +34,8 @@ async def test_scrape_enqueues_and_fetches_status(monkeypatch):
 
     app.dependency_overrides[deps_module.get_scrape_service] = lambda: _FakeScrapeService()
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.post(
             "/api/v1/scrape/jobs",
             json={"url": "https://example.com/job/1", "source": "other"},
