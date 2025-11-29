@@ -24,12 +24,10 @@ class Settings(BaseSettings):
     database_pool_size: int = 5
     database_max_overflow: int = 10
     # CORS
-    cors_origins: list[str] = Field(
+    cors_origins: list[str] | str = Field(
         default_factory=lambda: [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
-            "https://jobhub.muazr.ca",
-            "https://jobhub-frontend-810558467079.us-east1.run.app",
         ]
     )
     cors_allow_credentials: bool = False
@@ -46,10 +44,12 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_origins(cls, value):
+        if value is None:
+            return []
         if isinstance(value, str):
             # Allow comma or space separated origins from env
             return [item.strip() for item in value.replace(",", " ").split() if item.strip()]
-        return value
+        return list(value)
 
 
 settings = Settings()
