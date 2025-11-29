@@ -50,13 +50,21 @@
 
 ## About the Project
 
-**JobHub-API** is the backend service powering the **JobHub platform**, which allows users to:
+**JobHub-API** is the backend service powering the JobHub platform. It:
 
-- Collect, store, and manage job postings from different sources.
-- Track their application progress.
-- Analyze job description text for skill insights using LLM-based processing (future phase).
+- Collects, stores, and manages job postings from different sources
+- Tracks application progress
+- (Future) Analyzes job description text for skill insights using LLMs
 
-The API is built using **FastAPI**, following clean architecture principles with Pydantic schemas, dependency injection, and modular service design.
+Built with FastAPI (clean architecture, Pydantic schemas, dependency injection, modular services).
+
+**Cloud deployment:**
+- Containerized via Docker; deployed to Cloud Run
+- Images stored in Artifact Registry
+- Postgres via Neon (set DATABASE_URL)
+- Redis/RQ queue via Upstash (set REDIS_URL); worker runs as a separate Cloud Run service/job
+- CI/CD via GitHub Actions builds/pushes/deploys on branch pushes or manual runs
+
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -78,12 +86,12 @@ The API is built using **FastAPI**, following clean architecture principles with
 
 ```mermaid
 flowchart TD
-    A[Frontend - React] -->|REST / GraphQL| B[JobHub-API]
-    B --> C[(PostgreSQL Database)]
+    A[Frontend - React] -->|REST / GraphQL| B["JobHub-API (Google Cloud)"]
+    B --> C[("PostgreSQL DB (Neon)")]
     B --> D[SentinelAuth Microservice]
     D --> E[(Auth Database)]
     B --> F[Scraper API]
-    F --> G[(Redis Queue)]
+    F --> G[("Redis Queue (Upstash)")]
     G --> H[Scrape Workers]
 
         subgraph Core Services

@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, field_validator
 
 class Settings(BaseSettings):
     app_name: str = "fastapi-service"
@@ -28,6 +28,8 @@ class Settings(BaseSettings):
         default_factory=lambda: [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
+            "https://jobhub.muazr.ca",
+            "https://jobhub-frontend-810558467079.us-east1.run.app",
         ]
     )
     cors_allow_credentials: bool = False
@@ -40,6 +42,14 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def split_origins(cls, value):
+        if isinstance(value, str):
+            # Allow comma or space separated origins from env
+            return [item.strip() for item in value.replace(",", " ").split() if item.strip()]
+        return value
 
 
 settings = Settings()
