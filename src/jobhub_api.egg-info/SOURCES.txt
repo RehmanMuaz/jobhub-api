@@ -6,12 +6,19 @@ src/app/api/v1/__init__.py
 src/app/api/v1/endpoints/__init__.py
 src/app/api/v1/endpoints/applications.py
 src/app/api/v1/endpoints/health.py
+src/app/api/v1/endpoints/job_postings.py
 src/app/api/v1/endpoints/scrape.py
 src/app/core/__init__.py
 src/app/core/config.py
 src/app/core/deps.py
 src/app/core/logging.py
 src/app/core/services/scrape_service.py
+src/app/db/__init__.py
+src/app/db/base.py
+src/app/db/base_class.py
+src/app/db/session.py
+src/app/models/__init__.py
+src/app/models/job_posting.py
 src/app/schemas/__init__.py
 src/app/schemas/common.py
 src/app/schemas/job_posting.py
@@ -27,4 +34,6 @@ src/jobhub_api.egg-info/dependency_links.txt
 src/jobhub_api.egg-info/requires.txt
 src/jobhub_api.egg-info/top_level.txt
 tests/test_health.py
+tests/test_job_postings_endpoint.py
 tests/test_schemas.py
+tests/test_scrape_endpoints.py

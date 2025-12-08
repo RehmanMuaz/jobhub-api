@@ -10,7 +10,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/RehmanMuaz/JobHub-API">
-    <img src="docs/logo-bg.png" alt="Roadmap" width="20%">
+    <img src="docs/logo-new.svg" alt="Roadmap" width="200%">
   </a>
 
   <h3 align="center">JobHub-API</h3>
