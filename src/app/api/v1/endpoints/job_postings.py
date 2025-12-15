@@ -10,15 +10,8 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.deps import get_db
 from app.models.job_posting import JobPosting as JobPostingModel
 from app.schemas.job_posting import RawSnapshot, StoredJobPosting
-from pydantic import BaseModel
-
-VALID_STATUSES = {"New", "Applied", "Interview", "Offer", "Rejected"}
 
 router = APIRouter(prefix="/job-postings", tags=["job_postings"])
-
-
-class PostingStatusUpdate(BaseModel):
-  status: str
 
 
 @router.get("/", response_model=List[StoredJobPosting])
@@ -51,34 +44,6 @@ def get_job_posting(
     record = db.scalar(stmt)
     if record is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="job posting not found")
-    return _to_stored_posting(record)
-
-
-@router.patch("/{posting_id}/status", response_model=StoredJobPosting)
-def patch_posting_status(
-    posting_id: UUID,
-    payload: PostingStatusUpdate,
-    db: Session = Depends(get_db),
-) -> StoredJobPosting:
-    if payload.status not in VALID_STATUSES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"status must be one of {sorted(VALID_STATUSES)}",
-        )
-
-    stmt = (
-        select(JobPostingModel)
-        .options(selectinload(JobPostingModel.snapshots))
-        .where(JobPostingModel.id == posting_id)
-    )
-    record = db.scalar(stmt)
-    if record is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="job posting not found")
-
-    record.status = payload.status
-    db.add(record)
-    db.commit()
-    db.refresh(record)
     return _to_stored_posting(record)
 
 

@@ -41,10 +41,6 @@ class JobPosting(TimestampMixin, Base):
     posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     url: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="other")
-    salary: Mapped[str] = mapped_column(nullable=True)
-    salary_predicted: Mapped[str] = mapped_column(nullable=True)
-    score: Mapped[float | None] = mapped_column(nullable=True)
-    status: Mapped[str] = mapped_column(String(10), nullable=False, default="New")
 
     snapshots: Mapped[list["RawSnapshot"]] = relationship(
         "RawSnapshot",
