@@ -10,7 +10,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/RehmanMuaz/JobHub-API">
-    <img src="docs/logo-new.svg" alt="Roadmap" width="200%">
+    <img src="docs/logo-new.svg" alt="Roadmap" width="100%">
   </a>
 
   <h3 align="center">JobHub-API</h3>
@@ -71,12 +71,11 @@ Built with FastAPI (clean architecture, Pydantic schemas, dependency injection, 
 ---
 
 ### Built With
-
-- [![Python][Python-shield]][Python-url]
-- [![FastAPI][FastAPI-shield]][FastAPI-url]
-- [![PostgreSQL][Postgres-shield]][Postgres-url]
-- [![Docker][Docker-shield]][Docker-url]
-- [![Pydantic][Pydantic-shield]][Pydantic-url]
+[![Python][Python-shield]][Python-url]
+[![FastAPI][FastAPI-shield]][FastAPI-url]
+[![PostgreSQL][Postgres-shield]][Postgres-url]
+[![Docker][Docker-shield]][Docker-url]
+[![Pydantic][Pydantic-shield]][Pydantic-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

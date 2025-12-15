@@ -26,6 +26,10 @@ class JobPosting(TimestampedModel):
     posted_at: datetime | None = None
     url: HttpUrl
     source: Source
+    salary: str | None = None
+    salary_predicted: str | None = None
+    score: float | None = None
+    status: str = " New" # e.g., "New", "Applied" "Interview", "Rejected", "Offer"
 
 
 class StoredJobPosting(JobPosting):

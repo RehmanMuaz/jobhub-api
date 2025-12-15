@@ -15,6 +15,16 @@ from app.schemas.job_posting import JobPosting
 
 _DESCRIPTION_MIN_LENGTH = 80
 
+_CURRENCY_RE = re.compile(
+    r"""(?ix)
+    (?:\$|EUR|USD|CAD|GBP|\u20ac|\u00a3)   # currency symbol or code
+    \s*
+    \d[\d,\.]*                              # leading amount
+    (?:\s*[\u2013-]\s*\d[\d,\.]*)?      # optional range end (dash or en dash)
+    (?:\s*[kK])?                                 # optional 'k'
+    (?:\s*(?:per|/)\s*(year|yr|hour|hr|month|mo|annum|week|wk))?
+    """
+)
 
 def extract_job_posting(html: str, url: str, source: Source) -> Tuple[JobPosting, list[str]]:
     """Extract a best-effort job posting representation from raw HTML."""
@@ -49,6 +59,8 @@ def extract_job_posting(html: str, url: str, source: Source) -> Tuple[JobPosting
 
     posted_at = jsonld.get("posted_at") or _resolve_posted_at(soup)
 
+    salary = jsonld.get("salary") or _resolve_salary_v2(soup)
+
     job_posting = JobPosting(
         title=title.strip(),
         company=company.strip(),
@@ -58,6 +70,7 @@ def extract_job_posting(html: str, url: str, source: Source) -> Tuple[JobPosting
         posted_at=posted_at,
         url=url,
         source=source,
+        salary=salary.strip() if salary else None,
     )
 
     logger.debug(
@@ -250,11 +263,86 @@ def _resolve_from_json_ld(soup: BeautifulSoup) -> dict[str, Any]:
         if reqs:
             result.setdefault("requirements", reqs)
 
+        # Salary / compensation
+        salary_text = _salary_from_json_ld(job)
+        if salary_text:
+            result.setdefault("salary", salary_text)
+
         # We only need first valid JobPosting
         if result:
             break
 
     return result
+
+
+def _salary_from_json_ld(job: dict[str, Any]) -> str | None:
+    """Extract salary/baseSalary/estimatedSalary from a JSON-LD JobPosting node."""
+
+    def _format_amount(val: Any) -> str | None:
+        if val is None:
+            return None
+        if isinstance(val, (int, float)):
+            return f"{val:,.0f}"
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+        return None
+
+    def _format_salary(currency: str | None, min_val: Any, max_val: Any, unit: str | None) -> str | None:
+        cur = (currency or "").strip().upper()
+        min_txt = _format_amount(min_val)
+        max_txt = _format_amount(max_val)
+        if not min_txt and not max_txt:
+            return None
+        if cur and len(cur) == 3:
+            cur = f"{cur} "
+        prefix = cur or ""
+        if min_txt and max_txt and min_txt != max_txt:
+            base = f"{prefix}{min_txt}-{prefix}{max_txt}"
+        else:
+            base = f"{prefix}{min_txt or max_txt}"
+        if unit and isinstance(unit, str) and unit.strip():
+            base = f"{base} {unit.strip().lower()}"
+        return base
+
+    def _parse_salary_node(node: Any) -> str | None:
+        if node is None:
+            return None
+        if isinstance(node, (str, int, float)):
+            return _format_amount(node)
+        if isinstance(node, list):
+            for entry in node:
+                parsed = _parse_salary_node(entry)
+                if parsed:
+                    return parsed
+            return None
+        if isinstance(node, dict):
+            currency = node.get("currency") or node.get("salaryCurrency")
+            unit = node.get("unitText") or node.get("unit") or node.get("timeUnit")
+            # MonetaryAmount with value sub-object
+            value = node.get("value") or node.get("amount")
+            if isinstance(value, dict):
+                min_val = value.get("minValue") or value.get("value")
+                max_val = value.get("maxValue") or value.get("value")
+                unit = value.get("unitText") or unit
+                formatted = _format_salary(currency, min_val, max_val, unit)
+                if formatted:
+                    return formatted
+            if value and not isinstance(value, dict):
+                return _format_salary(currency, value, None, unit)
+            min_val = node.get("minValue") or node.get("minimum")
+            max_val = node.get("maxValue") or node.get("maximum")
+            if min_val or max_val:
+                formatted = _format_salary(currency, min_val, max_val, unit)
+                if formatted:
+                    return formatted
+        return None
+
+    for key in ("baseSalary", "estimatedSalary", "salary", "pay"):
+        if key in job:
+            parsed = _parse_salary_node(job.get(key))
+            if parsed:
+                return parsed
+    return None
 
 
 def _resolve_company(soup: BeautifulSoup) -> str | None:
@@ -390,6 +478,63 @@ def _resolve_posted_at(soup: BeautifulSoup) -> datetime | None:
         raw = _meta_content(soup, attr, value)
         if raw and (parsed := _parse_datetime(raw)):
             return parsed
+    return None
+
+
+def _resolve_salary_v2(soup: BeautifulSoup) -> str | None:
+    """More permissive salary resolver that catches ranges and currency codes."""
+    meta_keys = [
+        ("itemprop", "baseSalary"),
+        ("name", "job:salary"),
+    ]
+    for attr, value in meta_keys:
+        if content := _meta_content(soup, attr, value):
+            return content
+
+    text = soup.get_text(" ", strip=True)
+    raw_html = str(soup)
+
+    salary_range_re = re.compile(
+        r"""(?is)
+        (?:salary|compensation)[^$0-9]{0,50}(?:range[:\s]*)?
+        ((?:\$|EUR|USD|CAD|GBP|\u20ac|\u00a3)\s*\d[\d,\.]*\s*(?:[\u2013-]\s*(?:\$|EUR|USD|CAD|GBP|\u20ac|\u00a3)?\s*\d[\d,\.]*))
+        """,
+        re.VERBOSE,
+    )
+    if (m := salary_range_re.search(text) or salary_range_re.search(raw_html)):
+        return m.group(1)
+
+    if (m := _CURRENCY_RE.search(text) or _CURRENCY_RE.search(raw_html)):
+        return m.group(0)
+
+    return None
+
+
+def _resolve_salary(soup: BeautifulSoup) -> str | None:
+    meta_keys = [
+        ("itemprop", "baseSalary"),
+        ("name", "job:salary"),
+    ]
+    for attr, value in meta_keys:
+        if content := _meta_content(soup, attr, value):
+            return content
+
+    # Fallback: scan text (and raw HTML) for currency+number patterns and common phrases
+    text = soup.get_text(" ", strip=True)
+
+    salary_range_re = re.compile(
+        r"""(?ix)
+        (?:salary|compensation)[^\d$€£]*(?:range[:\s]*)?
+        ((?:\$|EUR|USD|CAD|GBP|\u20ac|\u00a3)\s*\d[\d,\.]*\s*[–-]\s*(?:\$|EUR|USD|CAD|GBP|\u20ac|\u00a3)?\s*\d[\d,\.]*)
+        """
+    )
+    range_match = salary_range_re.search(text)
+    if range_match:
+        return range_match.group(1)
+
+    if m := _CURRENCY_RE.search(text):
+        return m.group(0)
+
     return None
 
 

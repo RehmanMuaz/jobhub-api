@@ -165,6 +165,9 @@ def _persist_result(result: ScrapeJobResult) -> None:
                 posted_at=job_posting_schema.posted_at,
                 url=str(job_posting_schema.url),
                 source=job_posting_schema.source,
+                salary=job_posting_schema.salary,
+                salary_predicted=job_posting_schema.salary_predicted,
+                score=job_posting_schema.score,
             )
             session.add(job_posting)
         else:
@@ -176,6 +179,9 @@ def _persist_result(result: ScrapeJobResult) -> None:
             job_posting.requirements = job_posting_schema.requirements
             job_posting.posted_at = job_posting_schema.posted_at
             job_posting.source = job_posting_schema.source
+            job_posting.salary = job_posting_schema.salary
+            job_posting.salary_predicted = job_posting_schema.salary_predicted
+            job_posting.score = job_posting_schema.score
 
         if result.snapshot:
             snapshot_schema = result.snapshot
